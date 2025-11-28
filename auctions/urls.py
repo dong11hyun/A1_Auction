@@ -9,4 +9,5 @@ urlpatterns = [
     path('wallet/charge/', views.charge_wallet, name='charge_wallet'),
     # 새로 추가!
     path('create/', views.auction_create, name='auction_create'),
+    path('auction/<int:auction_id>/close/', views.close_auction, name='auction_close'),
 ]

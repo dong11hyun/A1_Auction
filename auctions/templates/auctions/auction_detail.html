@@ -16,6 +16,23 @@
         <hr>
         <p>{{ auction.description }}</p>
         
+        {% if request.user == auction.seller %}
+        <div class="card border-warning mt-4">
+            <div class="card-body">
+                <h5 class="card-title text-warning fw-bold">👨‍💼 판매자 관리 메뉴</h5>
+                <p class="card-text small text-muted">종료 시간이 지났거나 낙찰을 원하시면 버튼을 누르세요.</p>
+                
+                {% if auction.status == 'ACTIVE' %}
+                    <form action="{% url 'auction_close' auction.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning w-100 fw-bold">🚫 경매 종료 및 낙찰 확정</button>
+                    </form>
+                {% else %}
+                    <button class="btn btn-secondary w-100" disabled>이미 종료된 경매입니다</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
         <div class="card bg-light mt-4">
             <div class="card-body">
                 <h3 class="text-center mb-4">현재가: <span class="text-danger">{{ auction.current_price }}원</span></h3>

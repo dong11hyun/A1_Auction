@@ -121,3 +121,22 @@ def auction_create(request):
         form = AuctionForm()
         
     return render(request, 'auctions/auction_form.html', {'form': form})
+
+
+# auctions/views.py (맨 아래에 추가)
+from .services import determine_winner
+
+@login_required
+def close_auction(request, auction_id):
+    auction = get_object_or_404(Auction, id=auction_id)
+    
+    # 판매자 본인만 종료 버튼을 누를 수 있게 함
+    if request.user != auction.seller:
+        messages.error(request, "판매자만 종료할 수 있습니다.")
+        return redirect('auction_detail', auction_id=auction.id)
+    
+    # 로직 실행
+    msg = determine_winner(auction.id)
+    messages.info(request, msg)
+    
+    return redirect('auction_detail', auction_id=auction.id)

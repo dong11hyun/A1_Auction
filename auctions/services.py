@@ -83,3 +83,60 @@ def place_bid(auction_id, user, amount):
         auction.save()
 
         return f"성공! {amount}원에 입찰했습니다."
+    
+# auctions/services.py (맨 아래에 추가)
+
+def determine_winner(auction_id):
+    """
+    경매 종료 시 낙찰자를 확정하고 돈을 이동시키는 함수
+    """
+    with transaction.atomic():
+        auction = Auction.objects.select_for_update().get(id=auction_id)
+        
+        # 이미 종료된 거면 패스
+        if auction.status != 'ACTIVE':
+            return "이미 종료된 경매입니다."
+            
+        # 낙찰자 결정
+        winning_bid = auction.bids.order_by('-amount').first()
+        
+        if winning_bid:
+            # 1. 낙찰자 지갑 가져오기
+            winner_wallet = Wallet.objects.select_for_update().get(user=winning_bid.bidder)
+            
+            # 2. 판매자 지갑 가져오기
+            seller_wallet = Wallet.objects.select_for_update().get(user=auction.seller)
+            
+            # 3. 돈 이동 (낙찰자 잠금해제 -> 차감 -> 판매자에게 입금)
+            # 낙찰자는 이미 입찰할 때 돈이 locked_balance에 묶여있음
+            winner_wallet.locked_balance -= winning_bid.amount
+            winner_wallet.save()
+            
+            seller_wallet.balance += winning_bid.amount
+            seller_wallet.save()
+            
+            # 4. 거래 기록 남기기
+            # 낙찰자 출금 기록
+            Transaction.objects.create(
+                wallet=winner_wallet,
+                amount=-winning_bid.amount,
+                transaction_type='PAYMENT',
+                description=f"경매 낙찰 결제 ({auction.title})"
+            )
+            # 판매자 입금 기록
+            Transaction.objects.create(
+                wallet=seller_wallet,
+                amount=winning_bid.amount,
+                transaction_type='EARNING',
+                description=f"경매 판매 수익 ({auction.title})"
+            )
+            
+            auction.status = 'ENDED'
+            auction.save()
+            return f"낙찰 확정! {winning_bid.bidder.username}님이 {winning_bid.amount}원에 낙찰받았습니다."
+            
+        else:
+            # 입찰자가 아무도 없으면 '유찰' 처리
+            auction.status = 'ENDED' # 혹은 CANCELLED
+            auction.save()
+            return "입찰자가 없어 유찰되었습니다."
