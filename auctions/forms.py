@@ -1,7 +1,7 @@
 # auctions/forms.py (새로 만들기)
 
 from django import forms
-from .models import Auction
+from .models import Auction, Comment
 
 class AuctionForm(forms.ModelForm):
     class Meta:
@@ -29,4 +29,21 @@ class AuctionForm(forms.ModelForm):
             'start_time': '경매 시작 시간',
             'end_time': '경매 종료 시간',
             'instant_price': '즉시 구매가 (선택사항)',
+        }
+
+
+# 맨 아래에 추가
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ['content']
+        widgets = {
+            'content': forms.Textarea(attrs={
+                'class': 'form-control', 
+                'rows': 3, 
+                'placeholder': '상품에 대해 궁금한 점을 남겨주세요.'
+            }),
+        }
+        labels = {
+            'content': '문의 내용'
         }

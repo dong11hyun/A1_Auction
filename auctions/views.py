@@ -7,7 +7,7 @@ from .models import Auction
 from .services import place_bid # 아까 만든 입찰 로직 가져오기
 from wallet.models import Wallet, Transaction 
 from .models import Bid
-from .forms import AuctionForm # 파일 맨 위에 이거 꼭 추가하세요!
+from .forms import AuctionForm, CommentForm # 파일 맨 위에 이거 꼭 추가하세요!
 
 # 경매 목록 조회
 def auction_list(request):
@@ -156,3 +156,38 @@ def auction_buy_now(request, auction_id):
     
     return redirect('auction_detail', auction_id=auction_id)
 
+# auctions/views.py 맨 위에 from .forms import AuctionForm, CommentForm <- 추가!
+
+# 맨 아래에 함수 추가
+@login_required
+def auction_comment(request, auction_id):
+    auction = get_object_or_404(Auction, id=auction_id)
+    
+    if request.method == 'POST':
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.auction = auction
+            comment.writer = request.user
+            comment.save()
+            messages.success(request, "문의가 등록되었습니다.")
+            
+    return redirect('auction_detail', auction_id=auction_id)
+
+
+# auctions/views.py 맨 아래 추가
+
+@login_required
+def toggle_watchlist(request, auction_id):
+    auction = get_object_or_404(Auction, id=auction_id)
+    
+    # 이미 찜한 상태면 -> 취소
+    if auction.watchers.filter(id=request.user.id).exists():
+        auction.watchers.remove(request.user)
+        messages.info(request, "찜 목록에서 삭제했습니다.")
+    # 찜 안 한 상태면 -> 추가
+    else:
+        auction.watchers.add(request.user)
+        messages.success(request, "찜 목록에 추가했습니다! ❤️")
+        
+    return redirect('auction_detail', auction_id=auction_id)

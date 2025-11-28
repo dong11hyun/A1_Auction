@@ -11,4 +11,8 @@ urlpatterns = [
     path('create/', views.auction_create, name='auction_create'),
     path('auction/<int:auction_id>/close/', views.close_auction, name='auction_close'),
     path('auction/<int:auction_id>/buy_now/', views.auction_buy_now, name='auction_buy_now'),
+    # auctions/urls.py urlpatterns 안에 추가
+    path('auction/<int:auction_id>/comment/', views.auction_comment, name='auction_comment'),
+    # auctions/urls.py urlpatterns 안에 추가
+    path('auction/<int:auction_id>/watchlist/', views.toggle_watchlist, name='toggle_watchlist'),
 ]

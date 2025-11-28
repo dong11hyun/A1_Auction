@@ -11,7 +11,20 @@
     </div>
 
     <div class="col-md-6">
-        <h2>{{ auction.title }}</h2>
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>{{ auction.title }}</h2>
+            
+            {% if user.is_authenticated %}
+                <a href="{% url 'toggle_watchlist' auction.id %}" class="btn btn-outline-danger btn-sm">
+                    {% if request.user in auction.watchers.all %}
+                        ❤️ 찜 취소
+                    {% else %}
+                        🤍 찜하기
+                    {% endif %}
+                </a>
+            {% endif %}
+        </div>
+
         <p class="text-muted">판매자: {{ auction.seller.username }} | 마감: {{ auction.end_time }}</p>
         <hr>
         <p>{{ auction.description }}</p>
@@ -52,9 +65,7 @@
             </div>
             <p class="text-muted small mt-1">즉시 구매 시 경매가 바로 종료됩니다.</p>
         </div>
-    {% endif %}
-
-
+        {% endif %}
 
         <div class="card bg-light mt-4">
             <div class="card-body">
@@ -85,6 +96,33 @@
                 <li class="list-group-item">아직 입찰이 없습니다. 1등을 노려보세요!</li>
             {% endfor %}
         </ul>
+
+        <hr class="my-5">
+
+        <h4 class="mb-3">💬 상품 문의</h4>
+        <form action="{% url 'auction_comment' auction.id %}" method="post" class="mb-4">
+            {% csrf_token %}
+            <div class="input-group">
+                <textarea name="content" class="form-control" rows="3" placeholder="문의사항을 입력하세요..." required></textarea>
+                <button class="btn btn-dark" type="submit">등록</button>
+            </div>
+        </form>
+
+        <div class="list-group">
+            {% for comment in auction.comments.all %}
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 fw-bold">👤 {{ comment.writer.nickname|default:comment.writer.username }}</h6>
+                        <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                    <p class="mb-1">{{ comment.content }}</p>
+                </div>
+            {% empty %}
+                <p class="text-muted text-center">아직 등록된 문의가 없습니다.</p>
+            {% endfor %}
+        </div>
+
+        <div class="mb-5"></div>
     </div>
 </div>
 {% endblock %}

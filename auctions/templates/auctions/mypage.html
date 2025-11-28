@@ -61,6 +61,26 @@
                 <li class="list-group-item">판매 중인 물건이 없습니다.</li>
             {% endfor %}
         </ul>
+
+        <h4 class="mb-3 mt-5">❤️ 관심 상품 (찜 목록)</h4>
+        <div class="row">
+            {% for auction in user.watchlist.all %}
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title">{{ auction.title }}</h6>
+                        <p class="card-text text-danger">{{ auction.current_price }}원</p>
+                        <a href="{% url 'auction_detail' auction.id %}" class="btn btn-sm btn-outline-primary w-100">보러가기</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-light">찜한 상품이 없습니다.</div>
+            </div>
+            {% endfor %}
+        </div>
+
     </div>
 </div>
 {% endblock %}
