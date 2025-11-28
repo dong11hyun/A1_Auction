@@ -140,3 +140,19 @@ def close_auction(request, auction_id):
     messages.info(request, msg)
     
     return redirect('auction_detail', auction_id=auction.id)
+
+# auctions/views.py
+from .services import determine_winner, buy_now  # buy_now 추가 import 확인!
+
+# 즉시 구매 버튼 처리
+@login_required
+def auction_buy_now(request, auction_id):
+    if request.method == 'POST':
+        try:
+            msg = buy_now(auction_id, request.user)
+            messages.success(request, msg)
+        except ValueError as e:
+            messages.error(request, str(e))
+    
+    return redirect('auction_detail', auction_id=auction_id)
+

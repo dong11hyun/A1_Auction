@@ -140,3 +140,80 @@ def determine_winner(auction_id):
             auction.status = 'ENDED' # 혹은 CANCELLED
             auction.save()
             return "입찰자가 없어 유찰되었습니다."
+
+
+# auctions/services.py (맨 아래에 추가)
+
+def buy_now(auction_id, buyer):
+    """
+    즉시 구매 처리 함수
+    """
+    with transaction.atomic():
+        auction = Auction.objects.select_for_update().get(id=auction_id)
+        
+        # 1. 기본 체크
+        if auction.status != 'ACTIVE':
+            raise ValueError("진행 중인 경매가 아닙니다.")
+        if not auction.instant_price:
+            raise ValueError("즉시 구매가 불가능한 상품입니다.")
+        if buyer == auction.seller:
+            raise ValueError("판매자는 자신의 물건을 즉시 구매할 수 없습니다.")
+            
+        # 2. 구매자 지갑 확인
+        buyer_wallet = Wallet.objects.select_for_update().get(user=buyer)
+        if buyer_wallet.balance < auction.instant_price:
+            raise ValueError("잔액이 부족합니다.")
+
+        # ============================================
+        # 3. 기존 입찰자들 환불 처리 (중요!)
+        # ============================================
+        # 즉시 구매가 일어나면 기존 1등은 낙찰 실패이므로 돈을 돌려받아야 함
+        last_bid = auction.bids.order_by('-amount').first()
+        if last_bid:
+            prev_bidder_wallet = Wallet.objects.select_for_update().get(user=last_bid.bidder)
+            prev_bidder_wallet.locked_balance -= last_bid.amount
+            prev_bidder_wallet.balance += last_bid.amount
+            prev_bidder_wallet.save()
+            
+            Transaction.objects.create(
+                wallet=prev_bidder_wallet,
+                amount=last_bid.amount,
+                transaction_type='BID_REFUND',
+                description=f"경매({auction.title}) 즉시 구매 발생으로 환불"
+            )
+
+        # ============================================
+        # 4. 즉시 구매 결제 및 정산 (구매자 -> 판매자)
+        # ============================================
+        seller_wallet = Wallet.objects.select_for_update().get(user=auction.seller)
+
+        # 구매자 돈 차감
+        buyer_wallet.balance -= auction.instant_price
+        buyer_wallet.save()
+
+        # 판매자 돈 입금
+        seller_wallet.balance += auction.instant_price
+        seller_wallet.save()
+
+        # 거래 기록
+        Transaction.objects.create(
+            wallet=buyer_wallet,
+            amount=-auction.instant_price,
+            transaction_type='PAYMENT',
+            description=f"즉시 구매 결제 ({auction.title})"
+        )
+        Transaction.objects.create(
+            wallet=seller_wallet,
+            amount=auction.instant_price,
+            transaction_type='EARNING',
+            description=f"즉시 구매 판매 수익 ({auction.title})"
+        )
+
+        # 5. 경매 종료 처리
+        # 즉시 구매는 입찰 기록 대신 낙찰 기록으로 남길 수도 있지만, 
+        # 여기서는 편의상 최종 가격을 업데이트하고 종료합니다.
+        auction.current_price = auction.instant_price
+        auction.status = 'ENDED'
+        auction.save()
+
+        return f"축하합니다! {auction.title} 상품을 즉시 구매했습니다."
